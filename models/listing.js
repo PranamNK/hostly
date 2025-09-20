@@ -7,7 +7,7 @@ const listingSchema = new Schema({
   price: { type: Number, required: true },
   location: { type: String, required: true },
   country: { type: String, required: true },
-  image: {   // ✅ Added image
+  image: {  
     url: String,
     filename: String,
   },
