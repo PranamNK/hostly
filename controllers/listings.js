@@ -36,13 +36,13 @@ module.exports.createListing = async (req, res) => {
   newListing.owner = req.user._id;
 
   if (req.file) {
-    // ✅ Cloudinary upload
+    // Cloudinary upload
     newListing.image = {
       url: req.file.path,      // Cloudinary gives FULL URL here
       filename: req.file.filename,
     };
   } else {
-    // ✅ Fallback if no image uploaded
+    // Fallback if no image uploaded
     newListing.image = {
       url: "/images/default.jpg", // make sure this exists in public/images/
       filename: "default",
@@ -75,7 +75,7 @@ module.exports.renderEditForm = async (req, res) => {
     return res.redirect("/listings");
   }
 
-  // ✅ Safe check for image
+  // Safe check for image
   let originalImageUrl = listing.image
     ? listing.image.url.replace("/upload", "/upload/h_300,w_250")
     : "/images/default.jpg";
@@ -88,7 +88,7 @@ module.exports.updateListing = async (req, res) => {
   const { id } = req.params;
   let listing = await Listing.findByIdAndUpdate(id, { ...req.body.listing }, { new: true });
 
-  // ✅ Update image if uploaded
+  // Update image if uploaded
   if (req.file) {
     listing.image = {
       url: req.file.path,
@@ -96,7 +96,7 @@ module.exports.updateListing = async (req, res) => {
     };
   }
 
-  // ✅ Update map coordinates if location or country is changed
+  // Update map coordinates if location or country is changed
   const axios = require("axios");
   const query = encodeURIComponent(`${listing.location}, ${listing.country}`);
   try {
