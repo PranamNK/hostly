@@ -1,12 +1,18 @@
 const Listing = require("../models/listing");
 const axios = require("axios");
 
-// Reusable geocode function
+// Helper function to geocode a location
 async function geocode(query) {
   try {
     const res = await axios.get(
-      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
-      { headers: { "User-Agent": "hostly-app-example" } } // Nominatim requires User-Agent
+      `https://nominatim.openstreetmap.org/search`,
+      {
+        params: { q: query, format: "json", limit: 1 },
+        headers: {
+          "User-Agent": "hostly-app (your-email@example.com)" // replace with your email
+        },
+        timeout: 5000
+      }
     );
     if (res.data.length > 0) {
       return [
@@ -15,11 +21,12 @@ async function geocode(query) {
       ];
     } else {
       console.log(`No geocoding result for ${query}`);
+      return null;
     }
   } catch (err) {
     console.error("Geocoding failed:", err.message);
+    return null;
   }
-  return null; // fallback if fails
 }
 
 // Index
@@ -57,7 +64,6 @@ module.exports.createListing = async (req, res) => {
   newListing.owner = req.user._id;
 
   if (req.file) {
-    // Cloudinary upload
     newListing.image = {
       url: req.file.path,
       filename: req.file.filename,
@@ -69,19 +75,18 @@ module.exports.createListing = async (req, res) => {
     };
   }
 
-  // Geocode the location safely
-  const query = `${newListing.location}, ${newListing.country}`;
-  const coords = await geocode(query);
+  // Geocode the location
+  const coords = await geocode(`${newListing.location}, ${newListing.country}`);
   if (coords) {
     newListing.geometry = { type: "Point", coordinates: coords };
   } else {
-    newListing.geometry = null; // fallback if geocoding fails
+    // Fallback coordinates (center of India)
+    newListing.geometry = { type: "Point", coordinates: [77.2090, 28.6139] };
   }
 
   await newListing.save();
   req.flash("success", "New Listing Created!");
   res.redirect("/listings");
-
   console.log("Body:", req.body);
   console.log("File:", req.file);
 };
@@ -108,7 +113,6 @@ module.exports.updateListing = async (req, res) => {
   const { id } = req.params;
   let listing = await Listing.findByIdAndUpdate(id, { ...req.body.listing }, { new: true });
 
-  // Update image if uploaded
   if (req.file) {
     listing.image = {
       url: req.file.path,
@@ -117,13 +121,16 @@ module.exports.updateListing = async (req, res) => {
   }
 
   // Update map coordinates if location or country changed
-  const query = `${listing.location}, ${listing.country}`;
-  const coords = await geocode(query);
+  const coords = await geocode(`${listing.location}, ${listing.country}`);
   if (coords) {
     listing.geometry = { type: "Point", coordinates: coords };
+  } else {
+    // Fallback coordinates (center of India)
+    listing.geometry = { type: "Point", coordinates: [77.2090, 28.6139] };
   }
 
   await listing.save();
+
   req.flash("success", "Listing updated!");
   res.redirect(`/listings/${id}`);
 };
