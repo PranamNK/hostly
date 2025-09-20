@@ -49,21 +49,34 @@ module.exports.createListing = async (req, res) => {
     };
   }
 
-  // For now: dummy coords until geocoding works
-  newListing.geometry = {
-    type: "Point",
-    coordinates: [77.1025, 28.7041],
-  };
+  //  Geocode the location
+  const query = encodeURIComponent(`${newListing.location}, ${newListing.country}`);
+  try {
+    const geoRes = await axios.get(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`
+    );
+
+    if (geoRes.data.length > 0) {
+      const coords = [
+        parseFloat(geoRes.data[0].lon),
+        parseFloat(geoRes.data[0].lat),
+      ];
+      newListing.geometry = { type: "Point", coordinates: coords };
+    } else {
+      console.log(`No geocoding result for ${query}`);
+      newListing.geometry = { type: "Point", coordinates: [0, 0] };
+    }
+  } catch (err) {
+    console.error("Geocoding failed:", err.message);
+    newListing.geometry = { type: "Point", coordinates: [0, 0] };
+  }
 
   await newListing.save();
   req.flash("success", "New Listing Created!");
   res.redirect("/listings");
-  console.log("📂 Body:", req.body);
-  console.log("📸 File:", req.file);
-
-
+  console.log("Body:", req.body);
+  console.log("File:", req.file);
 };
-
 
 // Render edit form
 module.exports.renderEditForm = async (req, res) => {
@@ -121,7 +134,7 @@ module.exports.updateListing = async (req, res) => {
 };
 
 
-// Delete listing
+// Delete listingor else 
 module.exports.destroyListing = async (req, res) => {
   const { id } = req.params;
   let deletedListing = await Listing.findByIdAndDelete(id);
