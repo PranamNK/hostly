@@ -1,10 +1,10 @@
 // C:\hostly\updateGeo.js
 import mongoose from "mongoose";
 import axios from "axios";
-import Listing from "./models/listing.js";   // ✅ imports real model
+import Listing from "./models/listing.js";   // imports real model
 
 mongoose.connect("mongodb://127.0.0.1:27017/wanderLust")
-  .then(() => console.log("✅ DB connected"))
+  .then(() => console.log("DB connected"))
   .catch(err => console.error(err));
 
 const geocodeAndUpdate = async listing => {
@@ -27,14 +27,14 @@ const geocodeAndUpdate = async listing => {
       ];
 
       listing.geometry = { type: "Point", coordinates: coords };
-      await listing.save();   // ✅ persist change in DB
+      await listing.save();   // persist change in DB
 
-      console.log(`✅ Updated ${listing.title} → ${coords}`);
+      console.log(`Updated ${listing.title} → ${coords}`);
     } else {
-      console.log(`⚠️ No geocoding result for ${listing.title} (${query})`);
+      console.log(`No geocoding result for ${listing.title} (${query})`);
     }
   } catch (err) {
-    console.error(`❌ Geocoding failed for ${listing.title}:`, err.message);
+    console.error(`Geocoding failed for ${listing.title}:`, err.message);
   }
 };
 
@@ -43,7 +43,7 @@ const run = async () => {
   for (let l of listings) {
     await geocodeAndUpdate(l);
   }
-  console.log("🎉 All listings updated!");
+  console.log("All listings updated!");
   mongoose.connection.close();
 };
 
