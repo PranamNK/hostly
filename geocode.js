@@ -1,50 +1,137 @@
-// C:\hostly\updateGeo.js
-import mongoose from "mongoose";
-import axios from "axios";
-import Listing from "./models/listing.js";   // imports real model
+const Listing = require("../models/listing");
+const axios = require("axios");
 
-mongoose.connect("mongodb://127.0.0.1:27017/wanderLust")
-  .then(() => console.log("DB connected"))
-  .catch(err => console.error(err));
+// Index
+module.exports.index = async (req, res) => {
+  const allListings = await Listing.find({}).populate("owner");
+  res.render("listings/index", { allListings });
+};
 
-const geocodeAndUpdate = async listing => {
-  // Skip if coordinates already exist and are not [0,0]
-  if (listing.geometry && listing.geometry.coordinates[0] !== 0 && listing.geometry.coordinates[1] !== 0) {
-    return;
+// Render new form
+module.exports.renderNewForm = (req, res) => {
+  res.render("listings/new.ejs");
+};
+
+// Show a single listing
+module.exports.showListings = async (req, res) => {
+  const { id } = req.params;
+  const listing = await Listing.findById(id)
+    .populate({
+      path: "reviews",
+      populate: { path: "author" },
+    })
+    .populate("owner");
+
+  if (!listing) {
+    req.flash("error", "Listing you requested for does not exist!");
+    return res.redirect("/listings");
   }
 
-  const query = encodeURIComponent(`${listing.location}, ${listing.country}`);
+  res.render("listings/show.ejs", { listing, currUser: req.user });
+};
 
+// Create listing
+module.exports.createListing = async (req, res) => {
+  const newListing = new Listing(req.body.listing);
+  newListing.owner = req.user._id;
+
+  if (req.file) {
+    newListing.image = {
+      url: req.file.path,
+      filename: req.file.filename,
+    };
+  } else {
+    newListing.image = {
+      url: "/images/default.jpg",
+      filename: "default",
+    };
+  }
+
+  // Geocode the location with proper User-Agent
+  const query = encodeURIComponent(`${newListing.location}, ${newListing.country}`);
   try {
     const geoRes = await axios.get(
-      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+      { headers: { "User-Agent": "hostly-app-example" } }
     );
 
     if (geoRes.data.length > 0) {
       const coords = [
         parseFloat(geoRes.data[0].lon),
-        parseFloat(geoRes.data[0].lat)
+        parseFloat(geoRes.data[0].lat),
       ];
-
-      listing.geometry = { type: "Point", coordinates: coords };
-      await listing.save();   // persist change in DB
-
-      console.log(`Updated ${listing.title} → ${coords}`);
+      newListing.geometry = { type: "Point", coordinates: coords };
     } else {
-      console.log(`No geocoding result for ${listing.title} (${query})`);
+      console.log(`No geocoding result for ${query}`);
+      newListing.geometry = { type: "Point", coordinates: [0, 0] };
     }
   } catch (err) {
-    console.error(`Geocoding failed for ${listing.title}:`, err.message);
+    console.error("Geocoding failed:", err.message);
+    newListing.geometry = { type: "Point", coordinates: [0, 0] };
   }
+
+  await newListing.save();
+  req.flash("success", "New Listing Created!");
+  res.redirect("/listings");
 };
 
-const run = async () => {
-  const listings = await Listing.find({});
-  for (let l of listings) {
-    await geocodeAndUpdate(l);
+// Render edit form
+module.exports.renderEditForm = async (req, res) => {
+  const { id } = req.params;
+  const listing = await Listing.findById(id);
+
+  if (!listing) {
+    req.flash("error", "Listing you requested for does not exist!");
+    return res.redirect("/listings");
   }
-  console.log("All listings updated!");
-  mongoose.connection.close();
+
+  let originalImageUrl = listing.image
+    ? listing.image.url.replace("/upload", "/upload/h_300,w_250")
+    : "/images/default.jpg";
+
+  res.render("listings/edit.ejs", { listing, originalImageUrl });
 };
 
-run();
+// Update listing
+module.exports.updateListing = async (req, res) => {
+  const { id } = req.params;
+  let listing = await Listing.findByIdAndUpdate(id, { ...req.body.listing }, { new: true });
+
+  if (req.file) {
+    listing.image = {
+      url: req.file.path,
+      filename: req.file.filename,
+    };
+  }
+
+  // Update map coordinates with proper User-Agent
+  const query = encodeURIComponent(`${listing.location}, ${listing.country}`);
+  try {
+    const geoRes = await axios.get(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+      { headers: { "User-Agent": "hostly-app-example" } }
+    );
+    if (geoRes.data.length > 0) {
+      const coords = [parseFloat(geoRes.data[0].lon), parseFloat(geoRes.data[0].lat)];
+      listing.geometry = { type: "Point", coordinates: coords };
+    } else {
+      console.log(`No geocoding result for ${query}`);
+    }
+  } catch (err) {
+    req.flash("error", err.message);
+    console.error("Geocoding failed:", err.message);
+  }
+
+  await listing.save();
+  req.flash("success", "Listing updated!");
+  res.redirect(`/listings/${id}`);
+};
+
+// Delete listing
+module.exports.destroyListing = async (req, res) => {
+  const { id } = req.params;
+  let deletedListing = await Listing.findByIdAndDelete(id);
+  console.log("Deleted:", deletedListing);
+  req.flash("success", "Listing deleted!");
+  res.redirect("/listings");
+};
