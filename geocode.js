@@ -47,7 +47,7 @@ module.exports.createListing = async (req, res) => {
     };
   }
 
-  // Geocode the location with proper User-Agent
+  // Geocode the location
   const query = encodeURIComponent(`${newListing.location}, ${newListing.country}`);
   try {
     const geoRes = await axios.get(
@@ -57,17 +57,17 @@ module.exports.createListing = async (req, res) => {
 
     if (geoRes.data.length > 0) {
       const coords = [
-        parseFloat(geoRes.data[0].lon),
-        parseFloat(geoRes.data[0].lat),
+        parseFloat(geoRes.data[0].lon), // longitude first
+        parseFloat(geoRes.data[0].lat)  // latitude second
       ];
       newListing.geometry = { type: "Point", coordinates: coords };
     } else {
       console.log(`No geocoding result for ${query}`);
-      newListing.geometry = { type: "Point", coordinates: [0, 0] };
+      newListing.geometry = null; // don't force wrong coords
     }
   } catch (err) {
     console.error("Geocoding failed:", err.message);
-    newListing.geometry = { type: "Point", coordinates: [0, 0] };
+    newListing.geometry = null;
   }
 
   await newListing.save();
@@ -104,25 +104,33 @@ module.exports.updateListing = async (req, res) => {
     };
   }
 
-  // Update map coordinates with proper User-Agent
-  const query = encodeURIComponent(`${listing.location}, ${listing.country}`);
-  try {
-    const geoRes = await axios.get(
-      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
-      { headers: { "User-Agent": "hostly-app-example" } }
-    );
-    if (geoRes.data.length > 0) {
-      const coords = [parseFloat(geoRes.data[0].lon), parseFloat(geoRes.data[0].lat)];
-      listing.geometry = { type: "Point", coordinates: coords };
-    } else {
-      console.log(`No geocoding result for ${query}`);
+  // Geocode updated location
+  if (listing.location || listing.country) {
+    const query = encodeURIComponent(`${listing.location}, ${listing.country}`);
+    try {
+      const geoRes = await axios.get(
+        `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+        { headers: { "User-Agent": "hostly-app-example" } }
+      );
+
+      if (geoRes.data.length > 0) {
+        const coords = [
+          parseFloat(geoRes.data[0].lon),
+          parseFloat(geoRes.data[0].lat)
+        ];
+        listing.geometry = { type: "Point", coordinates: coords };
+      } else {
+        console.log(`No geocoding result for ${query}`);
+        listing.geometry = null;
+      }
+    } catch (err) {
+      console.error("Geocoding failed:", err.message);
+      listing.geometry = null;
     }
-  } catch (err) {
-    req.flash("error", err.message);
-    console.error("Geocoding failed:", err.message);
   }
 
   await listing.save();
+
   req.flash("success", "Listing updated!");
   res.redirect(`/listings/${id}`);
 };
