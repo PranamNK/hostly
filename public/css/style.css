@@ -19,6 +19,16 @@ flex: 1;
    color: #fe424d; 
    font-size: 2rem;
 }
+ /* map effects */
+.custom-fa-icon i {
+  color: #fe424d;   /* your brand color */
+  font-size: 2rem;
+  transition: transform 0.3s ease-in-out;
+}
+
+.custom-fa-icon i:hover {
+  transform: rotate(180deg);  /* optional animation */
+}
 
 .nav-link{
   color: #222222 !important;  
@@ -107,4 +117,23 @@ height: 40vh;
 }
 .edit-btn{
     background-color: #fe424d;
+}
+
+/* navbar scroll */
+#filters::-webkit-scrollbar {
+  height: 6px;
+}
+
+#filters::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+#filters::-webkit-scrollbar-thumb {
+  background: #fe424d;
+  border-radius: 10px;
+}
+
+#filters::-webkit-scrollbar-thumb:hover {
+  background: #c8323a;
 }

@@ -1,54 +1,41 @@
-const { ref } = require("joi");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-const Review = require("./review.js");
 
 const listingSchema = new Schema({
-    title: {
-    type: String,
-    required : true
-    },
-    description: String,
-    image: {
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  price: { type: Number, required: true },
+  location: { type: String, required: true },
+  country: { type: String, required: true },
+  image: {   // ✅ Added image
+    url: String,
     filename: String,
-    url: {
-      type: String,
-      default: "https://static.vecteezy.com/system/resources/thumbnails/049/546/770/small_2x/stunning-high-resolution-nature-and-landscape-backgrounds-breathtaking-scenery-in-hd-free-photo.jpg",
-      set: (v) => v === ""? "https://static.vecteezy.com/system/resources/thumbnails/049/546/770/small_2x/stunning-high-resolution-nature-and-landscape-backgrounds-breathtaking-scenery-in-hd-free-photo.jpg" : v
-      ,required: true
-    }
-    
   },
-    price:{
-    type: Number,
-    required: true
-    }, 
-    location :{
-    type: String,
-    required: true
-    },
-    
-    country: {
+  geometry: {
+    type: {
       type: String,
+      enum: ["Point"],
+      default: "Point",
     },
-  reviews: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Review",
-      
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0],
     },
-  ],
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
+    ref: "User",
   },
+  reviews: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Review",
+    },
+  ],
 });
 
-listingSchema.post("findOneAndDelete", async (listing) => {
-  if (listing) {
-    await Review.deleteMany({ _id: { $in: listing.reviews } });
-  }
-});
-
-const Listing = mongoose.model("Listing", listingSchema);
-module.exports = Listing;
+module.exports = mongoose.model("Listing", listingSchema);
