@@ -2,8 +2,15 @@ const Listing = require("../models/listing");
 const axios = require("axios");
 
 // Index
+// Index
 module.exports.index = async (req, res) => {
-  const allListings = await Listing.find({}).populate("owner");
+  const { category } = req.query;
+  let allListings;
+  if (category) {
+    allListings = await Listing.find({ category }).populate("owner");
+  } else {
+    allListings = await Listing.find({}).populate("owner");
+  }
   res.render("listings/index", { allListings });
 };
 
@@ -123,7 +130,7 @@ module.exports.updateListing = async (req, res) => {
       console.log(`No geocoding result for ${query}`);
     }
   } catch (err) {
-    req.flash("error",  err.message);
+    req.flash("error", err.message);
     console.error("Geocoding failed:", err.message);
   }
 

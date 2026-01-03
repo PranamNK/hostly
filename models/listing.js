@@ -7,7 +7,7 @@ const listingSchema = new Schema({
   price: { type: Number, required: true },
   location: { type: String, required: true },
   country: { type: String, required: true },
-  image: {  
+  image: {
     url: String,
     filename: String,
   },
@@ -36,6 +36,10 @@ const listingSchema = new Schema({
       ref: "Review",
     },
   ],
+  category: {
+    type: String,
+    enum: ["Trending", "Rooms", "Iconic Cities", "Mountains", "Castles", "pools", "Camping", "Farms", "Arctic", "Boat", "Dome", "Golfing", "Beaches", "City", "Lakes"],
+  }
 });
 
 module.exports = mongoose.model("Listing", listingSchema);
